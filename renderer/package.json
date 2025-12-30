@@ -1,0 +1,10 @@
+{
+  "name": "weather-renderer-xvfb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.2",
+    "puppeteer-core": "^24.10.2"
+  }
+}

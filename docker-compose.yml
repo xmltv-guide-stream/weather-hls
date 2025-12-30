@@ -1,0 +1,97 @@
+services:
+  renderer:
+    build: ./renderer
+    environment:
+      TARGET_URL: "https://v2.weatherscan.net/?90210"
+      VIEWPORT_W: "1280"
+      VIEWPORT_H: "720"
+      CAPTURE_FPS: "30"
+      VIDEO_BITRATE: "3500k"
+      STREAM_PORT: "3000"
+      HEALTH_PORT: "3001"
+      CROP_Y: "30"
+      USER_DATA_DIR: "/profile"
+      TZ: "America/Chicago"
+
+      # --- music settings ---
+      MUSIC_DIR: "/music"
+      AUDIO_BITRATE: "128k"
+      AUDIO_GAIN_DB: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - renderer_profile:/profile
+      - ./music:/music:ro
+    ports:
+      - "8081:3001"
+    restart: unless-stopped
+
+
+  hls:
+    build: ./hls
+    depends_on:
+      - renderer
+    environment:
+      TZ: "America/Chicago"
+      RENDERER_URL: "http://renderer:3000/stream.ts"
+      OUTPUT_M3U8: "/hls/weather.m3u8"
+    volumes:
+      - hls_internal:/hls
+    restart: unless-stopped
+
+  # Copy ONLY the weather HLS artifacts out to ./output for nginx
+  sync:
+    image: alpine:3.20
+    depends_on:
+      - hls
+    volumes:
+      - hls_internal:/hls:ro
+      - ./output:/output
+    command: >
+      sh -c "
+        set -eu;
+        apk add --no-cache rsync >/dev/null;
+        echo '[sync] syncing weather* from /hls -> /output .';
+        while true; do
+          rsync -a --delete --include='*/' --include='weather*' --exclude='*' /hls/ /output/ || true;
+          sleep 1;
+        done
+      "
+    restart: unless-stopped
+
+
+  xmltv:
+    build: ./xmltv
+    environment:
+      TZ: "America/Chicago"
+      CHANNEL_ID: "local.weather"
+      CHANNEL_NAME: "Local Weather"
+      GUIDE_DAYS: "2"
+      OUTPUT_DIR: "/output"
+      STREAM_URL: "weather.m3u8"
+      M3U_NAME: "playlist.m3u"
+      XMLTV_NAME: "guide.xml"
+    volumes:
+      - ./output:/output
+    restart: unless-stopped
+
+  web:
+    image: nginx:alpine
+    depends_on:
+      - sync
+      - xmltv
+    ports:
+      - "9798:80"
+    volumes:
+      - ./output:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+
+volumes:
+  hls_internal:
+  renderer_profile:
