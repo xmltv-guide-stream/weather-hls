@@ -5,6 +5,10 @@ W="${VIEWPORT_W:-1280}"
 H="${VIEWPORT_H:-720}"
 FPS="${CAPTURE_FPS:-30}"
 
+# Recommended defaults (tweakable)
+VQ="${THREAD_QUEUE_SIZE_VIDEO:-1024}"
+AQ="${THREAD_QUEUE_SIZE_AUDIO:-1024}"
+
 # Support either VIDEO_BITRATE (compose) or BITRATE (older env)
 BITRATE="${VIDEO_BITRATE:-${BITRATE:-3500k}}"
 
@@ -210,11 +214,13 @@ echo "[renderer] Capture: ${W}x${H} @ ${FPS}fps, v_bitrate=${BITRATE}, crop_y=${
 DISPLAY="${DISPLAY}" ffmpeg -hide_banner -loglevel info \
   -fflags nobuffer -flags low_delay \
   ${EXTRA_HW_INPUT_ARGS[@]+"${EXTRA_HW_INPUT_ARGS[@]}"} \
+  -thread_queue_size "${VQ}" \
   -f x11grab -draw_mouse 0 -video_size "${W}x${H}" -framerate "${FPS}" -i "${DISPLAY}.0+0,0" \
+  -thread_queue_size "${AQ}" \
   "${AUDIO_INPUT_ARGS[@]}" \
   -vf "${VF}" \
   "${AUDIO_FILTER_ARGS[@]}" \
-  "${VENC_ARGS[@]}" \
+  -c:v libx264 -preset veryfast -tune zerolatency \
   -g 60 -keyint_min 60 -sc_threshold 0 \
   -b:v "${BITRATE}" -maxrate "${BITRATE}" -bufsize 7000k \
   -c:a aac -b:a "${AUDIO_BITRATE}" -ac 2 -ar 48000 \
