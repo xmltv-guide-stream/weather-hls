@@ -1,0 +1,29 @@
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ---- Node ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Runtime / generated output ----
+output/**
+hls/**
+profile/**
+tmp/**
+
+# Keep folders by keeping placeholder files
+!output/.gitkeep
+!hls/.gitkeep
+!profile/.gitkeep
+!tmp/.gitkeep
+
+# ---- Music (optional) ----
+music/**
+!music/.gitkeep
